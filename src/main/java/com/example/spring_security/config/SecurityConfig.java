@@ -29,7 +29,6 @@ public class SecurityConfig {
                         .requestMatchers("/public").permitAll()
                         .anyRequest().authenticated()
                 )
-                // 필터 순서 지정: 기본 로그인 필터보다 앞에 실행되도록 설정
                 .addFilterBefore(new CustomAuthenticationFilter(authenticationManager()),
                         UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(withDefaults());
