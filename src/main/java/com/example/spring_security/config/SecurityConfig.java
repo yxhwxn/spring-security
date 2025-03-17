@@ -1,34 +1,55 @@
 package com.example.spring_security.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.security.config.Customizer;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-@EnableWebSecurity
+import static org.springframework.security.config.Customizer.withDefaults;
+
+import java.util.List;
+
+@Slf4j
 @Configuration
+@EnableWebSecurity
 public class SecurityConfig {
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login").permitAll()  // 로그인 페이지는 인증 없이 접근 가능
-                        .anyRequest().authenticated()           // 다른 요청은 인증 필요
+                        .requestMatchers("/public").permitAll()
+                        .anyRequest().authenticated()
                 )
-                .formLogin(form -> form
-                        .loginPage("/login")  // 커스텀 로그인 페이지 지정
-                        .defaultSuccessUrl("/", true) // 로그인 성공 시 이동할 페이지
-                        .permitAll()
-                )
-                .logout(logout -> logout
-                        .logoutUrl("/logout")
-                        .logoutSuccessUrl("/login?logout")
-                        .permitAll()
-                );
+                // 필터 순서 지정: 기본 로그인 필터보다 앞에 실행되도록 설정
+                .addFilterBefore(new CustomAuthenticationFilter(authenticationManager()),
+                        UsernamePasswordAuthenticationFilter.class)
+                .httpBasic(withDefaults());
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager() {
+        return new ProviderManager(List.of(new CustomAuthenticationProvider(inMemoryUserDetailsManager())));
+    }
+
+    @Bean
+    public InMemoryUserDetailsManager inMemoryUserDetailsManager() {
+        UserDetails user = User.withDefaultPasswordEncoder()
+                .username("user")
+                .password("1234")
+                .roles("USER")
+                .build();
+
+        return new InMemoryUserDetailsManager(user);
     }
 }
